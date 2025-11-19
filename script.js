@@ -3,6 +3,8 @@ const STORAGE_KEY = "quantum_r_data_v2";
 const TARGET_FILENAME = "final_dashboard_data.csv";
 
 document.addEventListener('DOMContentLoaded', () => {
+    setupMobileMenu(); // Fungsi baru untuk Mobile
+
     // 1. Cek apakah data sudah ada di memory
     const storedData = sessionStorage.getItem(STORAGE_KEY);
     
@@ -19,6 +21,43 @@ document.addEventListener('DOMContentLoaded', () => {
         fileInput.addEventListener('change', handleManualUpload);
     }
 });
+
+// --- FITUR BARU: MOBILE MENU ---
+function setupMobileMenu() {
+    const menuBtn = document.querySelector('.menu-toggle');
+    const sidebar = document.querySelector('.sidebar');
+    
+    // Buat overlay element secara dinamis jika belum ada
+    let overlay = document.querySelector('.sidebar-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.className = 'sidebar-overlay';
+        document.body.appendChild(overlay);
+    }
+
+    if (menuBtn && sidebar) {
+        // Buka/Tutup saat tombol menu diklik
+        menuBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        });
+
+        // Tutup saat klik di luar (overlay)
+        overlay.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+        });
+
+        // Tutup saat salah satu link sidebar diklik
+        const navLinks = sidebar.querySelectorAll('a');
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                sidebar.classList.remove('active');
+                overlay.classList.remove('active');
+            });
+        });
+    }
+}
 
 function tryAutoLoad() {
     Papa.parse(TARGET_FILENAME, {
@@ -44,8 +83,9 @@ function tryAutoLoad() {
 function handleManualUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
-    
-    document.getElementById('fileName').innerText = file.name;
+
+    // Update UI text
+    document.getElementById('fileName').textContent = file.name;
 
     Papa.parse(file, {
         header: true,
@@ -53,136 +93,148 @@ function handleManualUpload(event) {
         skipEmptyLines: true,
         complete: function(results) {
             if (validateData(results.data)) {
-                hideModal();
                 saveAndInit(results.data);
+                document.getElementById('uploadModal').style.display = 'none';
             } else {
-                alert("Format File Salah! Pastikan kolom 'Ticker' dan 'Cluster' ada di CSV.");
+                alert("Invalid CSV format! Ensure columns: Ticker, Return, Volatility, Cluster, company_name");
             }
-        },
-        error: function(err) { alert("Error reading file: " + err.message); }
+        }
     });
 }
-
-// --- DATA VALIDATION & NORMALIZATION (THE FIX) ---
 
 function validateData(data) {
     if (!data || data.length === 0) return false;
-    const row = data[0];
-    
-    // Cek ketersediaan kolom (Case Insensitive)
-    const hasTicker = row.Ticker !== undefined || row.ticker !== undefined;
-    const hasReturn = row.Return !== undefined || row.return !== undefined;
-    
-    return hasTicker && hasReturn;
+    const required = ['Ticker', 'Return', 'Volatility', 'Cluster'];
+    const firstRow = data[0];
+    return required.every(field => Object.prototype.hasOwnProperty.call(firstRow, field));
 }
 
-function normalizeData(rawData) {
-    // Fungsi ini menstandarisasi nama kolom agar JS bisa membacanya
-    return rawData.map(row => ({
-        ticker: row.Ticker || row.ticker,
-        company_name: row.company_name || row.Company_Name || row.Name || row.name,
-        Return: (row.Return !== undefined) ? row.Return : row.return,
-        Volatility: (row.Volatility !== undefined) ? row.Volatility : row.volatility,
-        Cluster: (row.Cluster !== undefined) ? row.Cluster : row.cluster,
-        Cluster_Label: row.Cluster_Label || row.cluster_label || ("Cluster " + (row.Cluster || row.cluster))
-    })).filter(d => d.ticker); // Hapus baris kosong
-}
-
-function saveAndInit(rawData) {
-    const cleanData = normalizeData(rawData);
-    
-    try {
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(cleanData));
-    } catch (e) { console.warn("SessionStorage Full"); }
-    
-    initializePage(cleanData);
+function saveAndInit(data) {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    initializePage(data);
 }
 
 function initializePage(data) {
-    const metrics = calculateMetrics(data);
-    const pageType = document.body.getAttribute('data-page');
+    const page = document.body.getAttribute('data-page');
     
-    updateHeaderMetrics(metrics);
+    // Sembunyikan modal jika data loaded
+    const modal = document.getElementById('uploadModal');
+    if(modal) modal.style.display = 'none';
 
-    if (pageType === 'dashboard') renderDashboard(data, metrics);
-    else if (pageType === 'cluster') renderClusterPage(data);
-    else if (pageType === 'datagrid') renderDataGrid(data);
-}
-
-// --- CALCULATIONS ---
-function calculateMetrics(data) {
-    if (!data.length) return { avgRet: 0, avgVol: 0, total: 0, topTicker: '-' };
-
-    const avgRet = data.reduce((s, i) => s + i.Return, 0) / data.length;
-    const avgVol = data.reduce((s, i) => s + i.Volatility, 0) / data.length;
-    // Cari Top Performer
-    const top = data.reduce((prev, curr) => (prev.Return > curr.Return) ? prev : curr, data[0]);
-
-    return {
-        avgRet: avgRet,
-        avgVol: avgVol,
-        total: data.length,
-        topTicker: top ? top.ticker : "-"
-    };
-}
-
-// --- RENDERING ---
-function updateHeaderMetrics(metrics) {
-    const el = document.getElementById('total-assets');
-    if(el) el.innerText = metrics.total;
-}
-
-function renderDashboard(data, metrics) {
-    document.getElementById('avg-return').innerText = (metrics.avgRet * 100).toFixed(2) + "%";
-    document.getElementById('avg-volatility').innerText = (metrics.avgVol * 100).toFixed(2) + "%";
-    document.getElementById('top-performer').innerText = metrics.topTicker;
-
-    const trace = {
-        x: data.map(d => d.Volatility),
-        y: data.map(d => d.Return),
-        text: data.map(d => `<b>${d.ticker}</b><br>${d.company_name}<br>${d.Cluster_Label}`),
-        mode: 'markers',
-        marker: {
-            size: 9,
-            color: data.map(d => d.Cluster), // Warna berdasarkan ID Cluster
-            colorscale: 'Portland',
-            showscale: false,
-            line: { color: '#1c1e2a', width: 0.5 }
-        },
-        type: 'scatter'
-    };
+    if (page === 'dashboard') {
+        renderKPIs(data);
+        renderScatterPlot(data);
+    } else if (page === 'cluster') {
+        renderClusterStats(data);
+        renderBarChart(data);
+    } else if (page === 'datagrid') {
+        renderDataGrid(data);
+    }
     
-    const layout = {
-        title: { text: 'Risk vs Return Landscape', font: { color: '#fff', family: 'Cinzel', size: 18 } },
-        paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
-        xaxis: { title: 'Volatility (Risk)', color: '#8b92a5', gridcolor: '#2d303e' },
-        yaxis: { title: 'Annual Return', color: '#8b92a5', gridcolor: '#2d303e' },
-        hovermode: 'closest'
-    };
-    Plotly.newPlot('scatterPlot', [trace], layout);
+    // Auto resize chart saat window berubah ukuran (Penting untuk Mobile)
+    window.addEventListener('resize', () => {
+        const plots = document.querySelectorAll('.js-plotly-plot');
+        plots.forEach(plot => Plotly.Plots.resize(plot));
+    });
 }
 
-function renderClusterPage(data) {
-    const counts = {};
-    data.forEach(d => { 
-        const label = d.Cluster_Label;
-        counts[label] = (counts[label] || 0) + 1; 
+// --- DASHBOARD LOGIC ---
+function renderKPIs(data) {
+    const totalAssets = data.length;
+    const avgReturn = data.reduce((sum, d) => sum + d.Return, 0) / totalAssets;
+    const avgVol = data.reduce((sum, d) => sum + d.Volatility, 0) / totalAssets;
+    
+    // Top Performer
+    const top = data.reduce((prev, current) => (prev.Return > current.Return) ? prev : current);
+
+    updateText('total-assets', totalAssets);
+    updateText('avg-return', (avgReturn * 100).toFixed(2) + '%');
+    updateText('avg-volatility', (avgVol * 100).toFixed(2) + '%');
+    updateText('top-performer', `${top.Ticker} (${(top.Return*100).toFixed(1)}%)`);
+}
+
+function updateText(id, value) {
+    const el = document.getElementById(id);
+    if(el) el.innerText = value;
+}
+
+function renderScatterPlot(data) {
+    const container = document.getElementById('scatterPlot');
+    if(!container) return;
+
+    // Group data by Cluster
+    const clusters = {};
+    data.forEach(d => {
+        const c = d.Cluster_Label || `Cluster ${d.Cluster}`;
+        if (!clusters[c]) clusters[c] = { x: [], y: [], text: [] };
+        clusters[c].x.push(d.Volatility);
+        clusters[c].y.push(d.Return);
+        clusters[c].text.push(`${d.company_name} (${d.Ticker})`);
     });
 
-    const statsDiv = document.getElementById('clusterStats');
-    if(statsDiv) {
-        statsDiv.innerHTML = '';
-        Object.keys(counts).forEach(key => {
-            statsDiv.innerHTML += `
-                <div class="card kpi">
-                    <div class="details" style="width:100%">
-                        <h3 style="font-size:0.8rem; margin-bottom:5px; color:#aa8c2c">${key}</h3>
-                        <h2 style="font-size:1.4rem">${counts[key]} Assets</h2>
-                    </div>
+    const traces = Object.keys(clusters).map(c => ({
+        x: clusters[c].x,
+        y: clusters[c].y,
+        mode: 'markers',
+        type: 'scatter',
+        name: c,
+        text: clusters[c].text,
+        marker: { size: 10, opacity: 0.8 }
+    }));
+
+    const layout = {
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        font: { color: '#ffffff' },
+        xaxis: { title: 'Annualized Volatility (Risk)', gridcolor: '#2d303e' },
+        yaxis: { title: 'Annualized Return', gridcolor: '#2d303e' },
+        margin: { t: 30, l: 50, r: 20, b: 50 },
+        showlegend: true,
+        legend: { orientation: 'h', y: -0.2 } // Legend di bawah untuk mobile
+    };
+    
+    // Responsive configuration
+    const config = { responsive: true };
+
+    Plotly.newPlot('scatterPlot', traces, layout, config);
+}
+
+// --- CLUSTER PAGE LOGIC ---
+function renderClusterStats(data) {
+    // Simple Aggregation Logic
+    const section = document.getElementById('clusterStats');
+    if(!section) return;
+    section.innerHTML = ''; // Clear
+
+    // Get Unique Clusters
+    const uniqueClusters = [...new Set(data.map(d => d.Cluster))].sort();
+
+    uniqueClusters.forEach(cId => {
+        const clusterData = data.filter(d => d.Cluster == cId);
+        const avgRet = clusterData.reduce((s, d) => s + d.Return, 0) / clusterData.length;
+        const label = clusterData[0].Cluster_Label || `Cluster ${cId}`;
+
+        section.innerHTML += `
+            <div class="card kpi">
+                <div class="icon" style="font-size:1.2rem; font-weight:bold;">${cId}</div>
+                <div class="details">
+                    <h3>${label}</h3>
+                    <h2 style="font-size:1.4rem">${(avgRet*100).toFixed(2)}% <span style="font-size:0.8rem; color:#8b92a5">Avg Ret</span></h2>
+                    <p style="font-size:0.8rem; color:#8b92a5">${clusterData.length} Assets</p>
                 </div>
-            `;
-        });
-    }
+            </div>
+        `;
+    });
+}
+
+function renderBarChart(data) {
+    if(!document.getElementById('barPlot')) return;
+    
+    const counts = {};
+    data.forEach(d => {
+        const label = d.Cluster_Label || `Cluster ${d.Cluster}`;
+        counts[label] = (counts[label] || 0) + 1;
+    });
 
     const trace = {
         x: Object.keys(counts),
@@ -190,12 +242,18 @@ function renderClusterPage(data) {
         type: 'bar',
         marker: { color: '#d4af37' }
     };
+
     const layout = {
-        title: { text: 'Cluster Distribution', font: { color: '#fff', family: 'Cinzel' } },
-        paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
-        xaxis: { color: '#8b92a5' }, yaxis: { color: '#8b92a5', gridcolor: '#2d303e' }
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        font: { color: '#ffffff' },
+        margin: { t: 30, l: 30, r: 20, b: 80 }, // Bottom margin lebih besar untuk label
+        xaxis: { tickangle: -25 } // Miringkan label agar muat di mobile
     };
-    Plotly.newPlot('barPlot', [trace], layout);
+    
+    const config = { responsive: true };
+
+    Plotly.newPlot('barPlot', [trace], layout, config);
 }
 
 function renderDataGrid(data) {
@@ -209,7 +267,7 @@ function renderDataGrid(data) {
         
         tbody.innerHTML += `
             <tr>
-                <td><strong>${d.ticker}</strong></td>
+                <td><strong>${d.Ticker}</strong></td>
                 <td>${d.company_name}</td>
                 <td>${d.Cluster_Label}</td>
                 <td class="${colorClass}">${(d.Return * 100).toFixed(2)}%</td>
@@ -231,7 +289,3 @@ function renderDataGrid(data) {
         });
     }
 }
-
-// UI Helpers
-function showModal() { document.getElementById('uploadModal').style.display = 'flex'; }
-function hideModal() { document.getElementById('uploadModal').style.display = 'none'; }
