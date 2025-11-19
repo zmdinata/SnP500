@@ -35,8 +35,19 @@
 
     <main class="main-content">
         <header>
-            <div class="header-title"><h1>Asset Matrix</h1><p class="subtitle">Comprehensive Data View</p></div>
-        </header>
+    <button class="menu-toggle">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+    <div class="header-title">
+        <h1>Dashboard</h1>
+        <p class="subtitle">Market Overview & Performance</p>
+    </div>
+
+    <div class="header-metrics">
+        <div class="metric-card"><span class="label">Total Assets</span><span class="value" id="total-assets">--</span></div>
+        <div class="metric-card"><span class="label">Market Status</span><span class="value text-gold">Active</span></div>
+    </div>
+</header>
 
         <section class="table-section full-height">
             <div class="card">
@@ -64,4 +75,5 @@
     </main>
     <script src="script.js"></script>
 </body>
+
 </html>
