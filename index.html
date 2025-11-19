@@ -7,7 +7,6 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     
@@ -16,18 +15,18 @@
 <body data-page="dashboard">
 
     <div id="uploadModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content animate-enter">
             <div class="modal-header">
-                <i class="fa-solid fa-triangle-exclamation"></i>
-                <h2>Data Source Required</h2>
+                <i class="fa-solid fa-triangle-exclamation" style="color: #d4af37; font-size: 2rem; margin-bottom: 10px;"></i>
+                <h2>Data Required</h2>
             </div>
-            <p class="instruction">Please upload <strong>final_dashboard_data.csv</strong> (Exported from R).</p>
-            <div class="upload-area">
+            <p class="instruction" style="margin: 15px 0; color: #8b92a5;">Please upload <strong>final_dashboard_data.csv</strong>.</p>
+            <div class="upload-area" style="border: 2px dashed #2d303e; padding: 20px; border-radius: 10px;">
                 <label for="csvFileInput" class="upload-btn">
                     <i class="fa-solid fa-folder-open"></i> Select File
                 </label>
                 <input type="file" id="csvFileInput" accept=".csv">
-                <span id="fileName">No file chosen</span>
+                <div style="margin-top: 10px; font-size: 0.9rem; color: #fff;" id="fileName">No file chosen</div>
             </div>
         </div>
     </div>
@@ -37,29 +36,35 @@
             <i class="fa-solid fa-landmark"></i>
             <span>QUANTUM<br>CAPITAL</span>
         </div>
+        
         <ul class="nav-links">
             <li class="active"><a href="index.html"><i class="fa-solid fa-chart-pie"></i> Dashboard</a></li>
             <li><a href="cluster.html"><i class="fa-solid fa-layer-group"></i> Clusters Analysis</a></li>
             <li><a href="data_grid.html"><i class="fa-solid fa-table"></i> Data Grid</a></li>
         </ul>
-        <div class="user-profile">
-            <div class="avatar">AI</div>
-            <div class="user-info">
-                <span class="name">Analyst View</span>
-                <span class="role">Premium Access</span>
+
+        <div class="sidebar-footer">
+            <div class="project-context">
+                Untuk Memenuhi Tugas Proyek Akhir<br>Mata Kuliah Data Science
+            </div>
+            <div style="margin-top: 15px;">
+                <span class="team-list-label">Nama Anggota:</span>
+                <ul class="team-list">
+                    <li>1. Ayu Aulia</li>
+                    <li>2. Tion Hermawan</li>
+                    <li>3. Zacky Muhammad Dinata</li>
+                </ul>
             </div>
         </div>
     </nav>
 
     <main class="main-content">
-        <header>
-            <button class="menu-toggle">
-                <i class="fa-solid fa-bars"></i>
-            </button>
-
+        <header class="animate-enter">
+            <button class="menu-toggle"><i class="fa-solid fa-bars"></i></button>
+            
             <div class="header-title">
-                <h1>Dashboard</h1>
-                <p class="subtitle">Market Overview & Performance</p>
+                <h1>Market Dashboard</h1>
+                <p class="subtitle">Real-time Performance Overview</p>
             </div>
 
             <div class="header-metrics">
@@ -69,27 +74,27 @@
                 </div>
                 <div class="metric-card">
                     <span class="label">Market Status</span>
-                    <span class="value text-gold">Active</span>
+                    <span class="value text-gold"><i class="fa-solid fa-circle" style="font-size: 0.6rem;"></i> Active</span>
                 </div>
             </div>
         </header>
 
         <section class="kpi-grid">
-            <div class="card kpi">
+            <div class="card kpi animate-enter delay-1">
                 <div class="icon"><i class="fa-solid fa-arrow-trend-up"></i></div>
                 <div class="details">
                     <h3>Avg Annual Return</h3>
                     <h2 id="avg-return">--</h2>
                 </div>
             </div>
-            <div class="card kpi">
+            <div class="card kpi animate-enter delay-2">
                 <div class="icon"><i class="fa-solid fa-bolt"></i></div>
                 <div class="details">
                     <h3>Avg Volatility</h3>
                     <h2 id="avg-volatility">--</h2>
                 </div>
             </div>
-            <div class="card kpi">
+            <div class="card kpi animate-enter delay-3">
                 <div class="icon"><i class="fa-solid fa-award"></i></div>
                 <div class="details">
                     <h3>Top Performer</h3>
@@ -99,9 +104,9 @@
         </section>
 
         <section class="charts-grid single-col">
-            <div class="card chart-container big">
+            <div class="card chart-container animate-enter delay-3">
                 <div class="card-header">
-                    <h3><i class="fa-solid fa-bullseye"></i> Risk vs. Return Landscape</h3>
+                    <h3><i class="fa-solid fa-bullseye" style="color: var(--primary-gold);"></i> Risk vs. Return Landscape</h3>
                 </div>
                 <div id="scatterPlot" class="plot-area"></div>
             </div>
