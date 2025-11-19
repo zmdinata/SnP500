@@ -1,0 +1,246 @@
+# --- LIBRARY ---
+library(flexdashboard)
+library(tidyverse)
+library(cluster)
+library(factoextra)
+library(plotly)
+library(DT)
+library(corrplot)
+library(reshape2)
+
+# --- 1. LOAD DATA ---
+tryCatch({
+  df <- read_csv("Dataset_SnP.csv")
+}, error = function(e) {
+  stop("File 'data_saham.csv' tidak ditemukan! Pastikan file ada di folder yang sama dengan file Rmd.")
+})
+
+# --- 2. PRE-PROCESSING (UNTUK EDA) ---
+# Mengambil data Closing Price saja untuk visualisasi trend
+df_closing <- df %>% 
+  select(ticker, ends_with("_closing"))
+  
+# Mengambil data Volume
+df_volume <- df %>%
+  select(ticker, ends_with("_volume"))
+
+# Pivot Long untuk visualisasi Time Series (mengambil sampel 5 saham random untuk EDA)
+set.seed(123)
+sample_tickers <- sample(df$ticker, 5)
+df_long_sample <- df_closing %>%
+  filter(ticker %in% sample_tickers) %>%
+  pivot_longer(cols = -ticker, names_to = "Date_Col", values_to = "Price") %>%
+  mutate(Date = as.numeric(gsub(".*_closing", "\\1", Date_Col))) # Simplifikasi tanggal jadi index urutan
+
+# --- 3. FEATURE ENGINEERING (INTI PENELITIAN) ---
+# A. Daily Returns
+price_matrix <- as.matrix(df_closing %>% select(-ticker))
+log_returns <- diff(log(t(price_matrix))) 
+
+# B. Feature Extraction
+# 1. Annualized Return (Mean Return * 252)
+annual_return <- colMeans(log_returns, na.rm = TRUE) * 252
+
+# 2. Annualized Volatility (SD * sqrt(252))
+annual_volatility <- apply(log_returns, 2, sd, na.rm = TRUE) * sqrt(252)
+
+# 3. Dollar Volume (Liquidity)
+avg_price <- colMeans(price_matrix, na.rm = TRUE)
+avg_vol <- rowMeans(as.matrix(df_volume %>% select(-ticker)), na.rm = TRUE)
+dollar_volume <- avg_price * avg_vol
+liquidity_log <- log10(dollar_volume)
+
+# Menggabungkan Fitur
+df_features <- data.frame(
+  Ticker = df$ticker,
+  Return = annual_return,
+  Volatility = annual_volatility,
+  Liquidity = liquidity_log
+) %>% 
+  drop_na() %>%
+  left_join(df %>% select(ticker, company_name), by = c("Ticker" = "ticker"))
+
+# C. Normalisasi (Z-Score)
+df_scaled <- df_features %>%
+  select(Return, Volatility, Liquidity) %>%
+  scale()
+
+# --- 4. MODELING (K-MEANS) ---
+set.seed(42)
+k <- 4 # Asumsi 4 cluster berdasarkan karakteristik pasar
+km_res <- kmeans(df_scaled, centers = k, nstart = 25)
+df_features$Cluster <- as.factor(km_res$cluster)
+
+# PCA untuk Visualisasi 2D
+pca <- prcomp(df_scaled, center = FALSE, scale. = FALSE)
+df_features$PC1 <- pca$x[,1]
+df_features$PC2 <- pca$x[,2]
+
+# --- 5. MODELING (HIERARCHICAL - SAMPEL) ---
+# Mengambil Top 30 saham paling likuid untuk dendrogram (agar terbaca)
+top_30_liq <- df_features %>% arrange(desc(Liquidity)) %>% head(30)
+dist_mat <- dist(scale(top_30_liq %>% select(Return, Volatility, Liquidity)))
+hc_res <- hclust(dist_mat, method = "ward.D2")
+
+#Exploratory Data Analysis (EDA) {data-icon="fa-search"}
+
+#row {data-height=150}
+
+#Total Emiten
+
+valueBox(nrow(df_features), icon = "fa-building", color = "#2c3e50")
+
+
+#Rata-rata Return (H1 2025)
+
+avg_ret <- mean(df_features$Return)
+valueBox(paste0(round(avg_ret*100, 2), "%"), 
+         icon = "fa-chart-line", 
+         color = ifelse(avg_ret > 0, "success", "danger"))
+
+
+#Rata-rata Risiko Pasar
+
+avg_vol <- mean(df_features$Volatility)
+valueBox(paste0(round(avg_vol*100, 2), "%"), 
+         icon = "fa-exclamation-triangle", 
+         color = "warning")
+
+
+#Row {data-height=450}
+
+#Sampel Tren Pergerakan Harga (Time Series)
+
+p1 <- ggplot(df_long_sample, aes(x = Date_Col, y = Price, color = ticker, group = ticker)) +
+  geom_line(size = 1) +
+  theme_minimal() +
+  theme(axis.text.x = element_blank()) +
+  labs(title = "Pergerakan Harga 5 Saham Acak (H1 2025)", x = "Waktu", y = "Harga ($)")
+
+ggplotly(p1)
+
+
+#Distribusi Return & Risiko (Outlier Detection)
+
+# Menggunakan data fitur untuk melihat outlier
+df_melt <- df_features %>% 
+  select(Return, Volatility) %>% 
+  pivot_longer(cols = everything(), names_to = "Metric", values_to = "Value")
+
+p2 <- ggplot(df_melt, aes(x = Metric, y = Value, fill = Metric)) +
+  geom_boxplot() +
+  theme_light() +
+  scale_fill_brewer(palette = "Pastel1") +
+  labs(title = "Boxplot Distribusi Return vs Volatilitas")
+
+ggplotly(p2)
+
+
+#Row {data-height=400}
+
+#Korelasi Antar Fitur (Heatmap)
+
+# Matriks korelasi antar fitur yang sudah di-engineering
+cor_matrix <- cor(df_features %>% select(Return, Volatility, Liquidity))
+corrplot(cor_matrix, method = "color", type = "upper", 
+         addCoef.col = "black", tl.col = "black", diag = FALSE,
+         title = "Korelasi Fitur Utama")
+
+
+#Penjelasan
+
+#Interpretasi EDA:
+
+#Time Series: Menunjukkan bahwa setiap saham memiliki tren yang berbeda, sehingga perlu dikelompokkan.
+
+#Boxplot: Membantu mendeteksi outlier (saham dengan risiko ekstrem atau return ekstrem).
+
+#Heatmap: Memastikan fitur tidak multikolinear sempurna. Biasanya Return dan Volatilitas memiliki korelasi positif.
+
+#K-Means Clustering {data-icon="fa-cubes"}
+
+#Row {data-height=500}
+
+#Peta Klaster Saham (PCA Visualization)
+
+# Visualisasi Utama
+plot_ly(df_features, x = ~PC1, y = ~PC2, color = ~Cluster, colors = "Set1",
+        text = ~paste("<b>", Ticker, "</b><br>", company_name,
+                      "<br>Return:", round(Return*100, 1), "%",
+                      "<br>Risk:", round(Volatility*100, 1), "%",
+                      "<br>Liq Log:", round(Liquidity, 2)),
+        type = 'scatter', mode = 'markers',
+        marker = list(size = 8, opacity = 0.7, line = list(width = 1, color = 'white'))) %>%
+  layout(title = "Visualisasi Cluster dalam 2 Dimensi PCA",
+         xaxis = list(title = "Dimensi 1 (Risiko & Return)"),
+         yaxis = list(title = "Dimensi 2 (Likuiditas)"))
+
+
+#Row {data-height=400}
+
+#Profil Karakteristik Cluster
+
+# Menampilkan rata-rata statistik per cluster
+cluster_profile <- df_features %>%
+  group_by(Cluster) %>%
+  summarise(
+    Avg_Return = mean(Return),
+    Avg_Volatility = mean(Volatility),
+    Avg_Liquidity = mean(Liquidity),
+    Count = n()
+  ) %>%
+  mutate(
+    Avg_Return = paste0(round(Avg_Return*100, 2), "%"),
+    Avg_Volatility = paste0(round(Avg_Volatility*100, 2), "%"),
+    Avg_Liquidity = round(Avg_Liquidity, 2)
+  )
+
+knitr::kable(cluster_profile, caption = "Statistik Rata-rata per Cluster")
+
+
+#Visualisasi Distribusi Fitur per Cluster
+
+# Memvisualisasikan perbedaan karakteristik antar cluster
+p3 <- df_features %>%
+  select(Cluster, Return, Volatility) %>%
+  pivot_longer(cols = -Cluster, names_to = "Metric", values_to = "Value") %>%
+  ggplot(aes(x = Cluster, y = Value, fill = Cluster)) +
+  geom_boxplot() +
+  facet_wrap(~Metric, scales = "free") +
+  theme_light() +
+  scale_fill_brewer(palette = "Set1")
+
+ggplotly(p3)
+
+
+#Hierarchical Clustering & Data {data-icon="fa-sitemap"}
+
+#Row {data-height=500}
+
+#Dendrogram Struktur Pasar (Top 30 Saham Paling Likuid)
+
+# Visualisasi Dendrogram menggunakan factoextra
+fviz_dend(hc_res, k = 4, 
+          cex = 0.8, 
+          k_colors = c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3"),
+          rect = TRUE, 
+          main = "Dendrogram: Hierarki Kemiripan 30 Saham Top",
+          ylab = "Jarak (Euclidean)")
+
+
+#Row {data-height=500}
+
+#Database Lengkap Hasil Klasterisasi
+
+datatable(df_features %>% 
+            select(Ticker, company_name, Cluster, Return, Volatility, Liquidity) %>%
+            mutate(Return = round(Return, 4), 
+                   Volatility = round(Volatility, 4),
+                   Liquidity = round(Liquidity, 2)),
+          filter = 'top',
+          extensions = 'Buttons',
+          options = list(
+            dom = 'Bfrtip',
+            buttons = c('copy', 'csv', 'excel'),
+            pageLength = 15
+          ))

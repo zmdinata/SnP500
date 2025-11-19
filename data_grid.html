@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Grid | Quantum Capital</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="datagrid">
+
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><i class="fa-solid fa-triangle-exclamation"></i><h2>Data Required</h2></div>
+            <p class="instruction">Please upload <strong>final_dashboard_data.csv</strong>.</p>
+            <div class="upload-area">
+                <label for="csvFileInput" class="upload-btn"><i class="fa-solid fa-folder-open"></i> Select File</label>
+                <input type="file" id="csvFileInput" accept=".csv">
+                <span id="fileName">No file chosen</span>
+            </div>
+        </div>
+    </div>
+
+    <nav class="sidebar">
+        <div class="logo"><i class="fa-solid fa-landmark"></i><span>QUANTUM<br>CAPITAL</span></div>
+        <ul class="nav-links">
+            <li><a href="index.html"><i class="fa-solid fa-chart-pie"></i> Dashboard</a></li>
+            <li><a href="cluster.html"><i class="fa-solid fa-layer-group"></i> Clusters Analysis</a></li>
+            <li class="active"><a href="data_grid.html"><i class="fa-solid fa-table"></i> Data Grid</a></li>
+        </ul>
+        <div class="user-profile"><div class="avatar">AI</div><div class="user-info"><span class="name">Analyst View</span><span class="role">Premium Access</span></div></div>
+    </nav>
+
+    <main class="main-content">
+        <header>
+            <div class="header-title"><h1>Asset Matrix</h1><p class="subtitle">Comprehensive Data View</p></div>
+        </header>
+
+        <section class="table-section full-height">
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fa-solid fa-database"></i> Market Constituents</h3>
+                    <input type="text" id="searchInput" placeholder="Search ticker..." class="search-box">
+                </div>
+                <div class="table-responsive">
+                    <table id="dataTable">
+                        <thead>
+                            <tr>
+                                <th>Ticker</th>
+                                <th>Company Name</th>
+                                <th>Cluster Label</th>
+                                <th>Ann. Return</th>
+                                <th>Ann. Volatility</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>
