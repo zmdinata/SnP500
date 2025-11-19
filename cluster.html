@@ -4,30 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Clusters | Quantum Capital</title>
-    
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    
     <link rel="stylesheet" href="style.css">
 </head>
 <body data-page="cluster">
 
     <div id="uploadModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content animate-enter">
             <div class="modal-header">
-                <i class="fa-solid fa-triangle-exclamation"></i>
+                <i class="fa-solid fa-triangle-exclamation" style="color: #d4af37; font-size: 2rem;"></i>
                 <h2>Data Required</h2>
             </div>
             <p class="instruction">Please upload <strong>final_dashboard_data.csv</strong>.</p>
-            <div class="upload-area">
-                <label for="csvFileInput" class="upload-btn">
-                    <i class="fa-solid fa-folder-open"></i> Select File
-                </label>
+            <div class="upload-area" style="border: 2px dashed #2d303e; padding: 20px; margin-top:10px;">
+                <label for="csvFileInput" class="upload-btn">Select File</label>
                 <input type="file" id="csvFileInput" accept=".csv">
-                <span id="fileName">No file chosen</span>
+                <div id="fileName">No file chosen</div>
             </div>
         </div>
     </div>
@@ -42,21 +37,25 @@
             <li class="active"><a href="cluster.html"><i class="fa-solid fa-layer-group"></i> Clusters Analysis</a></li>
             <li><a href="data_grid.html"><i class="fa-solid fa-table"></i> Data Grid</a></li>
         </ul>
-        <div class="user-profile">
-            <div class="avatar">AI</div>
-            <div class="user-info">
-                <span class="name">Analyst View</span>
-                <span class="role">Premium Access</span>
+        
+        <div class="sidebar-footer">
+            <div class="project-context">
+                Untuk Memenuhi Tugas Proyek Akhir<br>Mata Kuliah Data Science
+            </div>
+            <div style="margin-top: 15px;">
+                <span class="team-list-label">Nama Anggota:</span>
+                <ul class="team-list">
+                    <li>1. Ayu Aulia</li>
+                    <li>2. Tion Hermawan</li>
+                    <li>3. Zacky Muhammad Dinata</li>
+                </ul>
             </div>
         </div>
     </nav>
 
     <main class="main-content">
-        <header>
-            <button class="menu-toggle">
-                <i class="fa-solid fa-bars"></i>
-            </button>
-
+        <header class="animate-enter">
+            <button class="menu-toggle"><i class="fa-solid fa-bars"></i></button>
             <div class="header-title">
                 <h1>Cluster Segmentation</h1>
                 <p class="subtitle">Structural Market Grouping</p>
@@ -67,9 +66,9 @@
             </section>
 
         <section class="charts-grid single-col">
-            <div class="card chart-container">
+            <div class="card chart-container animate-enter delay-2">
                 <div class="card-header">
-                    <h3><i class="fa-solid fa-chart-column"></i> Cluster Distribution Count</h3>
+                    <h3><i class="fa-solid fa-chart-column" style="color: var(--primary-gold);"></i> Cluster Distribution Count</h3>
                 </div>
                 <div id="barPlot" class="plot-area"></div>
             </div>
